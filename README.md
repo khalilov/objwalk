@@ -29,14 +29,14 @@ const data = {
 }
 
 pick(data, 'user.name')
-// 'Ada'
+// 'Natalia Romanoff'
 ```
 
 Pick several keys from the same nested object.
 
 ```ts
 pick(data, 'user.{name,email}')
-// { name: 'Ada', email: 'ada@example.com' }
+// { name: 'Natalia Romanoff', email: 'black.widow@example.com' }
 ```
 
 List keys from a nested object.
@@ -66,8 +66,8 @@ Set a value inside an object by path.
 ```ts
 const data = {}
 
-set(data, 'user.name', 'Ada')
-// { user: { name: 'Ada' } }
+set(data, 'user.name', 'Natalia')
+// { user: { name: 'Natalia' } }
 ```
 
 Set values inside arrays with an explicit index.
@@ -76,7 +76,7 @@ Set values inside arrays with an explicit index.
 const data = {}
 
 set(data, 'items[0].title', 'First')
-// { items: [{ title: 'First' }] }
+// { items: [{ title: 'Romanoff' }] }
 ```
 
 `set` mutates the object passed to it and returns the same object.
@@ -88,8 +88,8 @@ Create a new object by mapping destination paths to source paths.
 ```ts
 const source = {
   profile: {
-    fullName: 'Ada Lovelace',
-    email: 'ada@example.com',
+    fullName: 'Natalia Romanoff',
+    email: 'black.widow@example.com',
   },
 }
 
@@ -99,8 +99,8 @@ extract(source, {
 })
 // {
 //   user: {
-//     name: 'Ada Lovelace',
-//     email: 'ada@example.com',
+//     name: 'Natalia Romanoff',
+//     email: 'black.widow@example.com',
 //   },
 // }
 ```
@@ -190,7 +190,3 @@ extract(data, mapping)
 each(data, callback)
 map(data, callback)
 ```
-
-## Status
-
-Early work in progress. The public API is intentionally small and may still change before the first stable release.

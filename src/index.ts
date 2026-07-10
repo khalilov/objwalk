@@ -1,3 +1,5 @@
+export { each, type EachCallback, type WalkKey } from './each'
 export { extract, type ExtractMapping } from './extract'
+export { map, type MapCallback } from './map'
 export { pick, type ObjwalkObject } from './pick'
 export { set } from './set'
