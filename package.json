@@ -1,0 +1,31 @@
+{
+  "name": "objwalk",
+  "version": "0.1.0",
+  "description": "Small utilities for reading, writing, walking, and reshaping nested JavaScript objects.",
+  "license": "ISC",
+  "author": "Sergey Khalilov <sergey.khalilov@gmail.com>",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "pack:check": "npm pack --dry-run"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  },
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}
