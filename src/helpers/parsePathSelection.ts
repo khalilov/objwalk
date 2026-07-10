@@ -3,7 +3,7 @@ export type PathSelection = {
   keys: string[] | 'all'
 }
 
-const selectionRegex: RegExp = /(.*){([^}]+)}$/
+const selectionRegex: RegExp = /(.*)\{([^}]+)\}$/
 
 const normalizeSelectionPath = (path: string): string => {
   return path.endsWith('.') ? path.slice(0, -1) : path
