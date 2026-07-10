@@ -7,6 +7,18 @@
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
+  "keywords": [
+    "object",
+    "nested",
+    "path",
+    "pick",
+    "set",
+    "extract",
+    "walk",
+    "traverse",
+    "utilities",
+    "helpers"
+  ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
     "test": "echo \"Error: no test specified\" && exit 1",
