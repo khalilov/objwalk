@@ -2,32 +2,25 @@
   "name": "objwalk",
   "version": "0.1.0",
   "description": "Small utilities for reading, writing, walking, and reshaping nested JavaScript objects.",
+  "keywords": [
+    "object",
+    "path",
+    "object-path",
+    "pick",
+    "set",
+    "extract",
+    "map",
+    "walk",
+    "traverse",
+    "transform",
+    "nested",
+    "mapper"
+  ],
   "license": "ISC",
   "author": "Sergey Khalilov <sergey.khalilov@gmail.com>",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
-  "keywords": [
-    "object",
-    "nested",
-    "path",
-    "pick",
-    "set",
-    "extract",
-    "walk",
-    "traverse",
-    "utilities",
-    "helpers"
-  ],
-  "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "pack:check": "npm pack --dry-run"
-  },
-  "devDependencies": {
-    "tsup": "^8.5.1",
-    "typescript": "^5.9.3"
-  },
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -39,5 +32,14 @@
   "files": [
     "dist",
     "README.md"
-  ]
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "pack:check": "npm pack --dry-run"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
 }
