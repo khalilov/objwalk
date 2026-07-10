@@ -1,4 +1,5 @@
-import { each, type WalkKey } from './each'
+import { each } from './each'
+import { type WalkKey } from './types'
 
 export type MapCallback<TStore extends Record<string, any> = Record<string, any>> = (
   key: WalkKey,
