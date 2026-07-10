@@ -18,6 +18,14 @@
   ],
   "license": "ISC",
   "author": "Sergey Khalilov <sergey.khalilov@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khalilov/objwalk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/khalilov/objwalk/issues"
+  },
+  "homepage": "https://github.com/khalilov/objwalk#readme",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
