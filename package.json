@@ -46,6 +46,7 @@
     "test": "vitest run",
     "pack:check": "npm pack --dry-run"
   },
+  "prepublishOnly": "npm run build",
   "devDependencies": {
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
