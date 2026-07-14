@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createPath } from '../../helpers'
+import { createPath } from '../../src/helpers'
 
 describe('createPath', () => {
   it('creates object paths', () => {

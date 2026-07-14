@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { pick } from '../pick'
+import { pick } from '../src/pick'
 
 const data = {
   user: { name: 'Ada', role: 'admin', email: 'ada@example.com' },

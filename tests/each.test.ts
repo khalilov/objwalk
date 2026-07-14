@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { each } from '../each'
+import { each } from '../src/each'
 
 describe('each', () => {
   it('walks nested objects and arrays with path information', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { extract } from '../extract'
+import { extract } from '../src/extract'
 
 describe('extract', () => {
   it('maps destination paths to source paths', () => {

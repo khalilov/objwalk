@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { parsePathSelection } from '../../helpers'
+import { parsePathSelection } from '../../src/helpers'
 
 describe('parsePathSelection', () => {
   it('returns empty keys for a plain path', () => {

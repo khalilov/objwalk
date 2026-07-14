@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getValueByPath } from '../../helpers'
+import { getValueByPath } from '../../src/helpers'
 
 const data = {
   user: { name: 'Ada' },

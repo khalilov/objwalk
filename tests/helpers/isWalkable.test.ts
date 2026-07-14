@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isWalkable } from '../../helpers'
+import { isWalkable } from '../../src/helpers'
 
 describe('isWalkable', () => {
   it('returns true for objects and arrays', () => {

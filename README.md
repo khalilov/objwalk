@@ -13,7 +13,7 @@ npm install objwalk
 ## Usage
 
 ```ts
-import { each, extract, map, pick, set } from 'objwalk'
+import { each, extract, map, merge, pick, set } from 'objwalk'
 ```
 
 ## pick
@@ -80,6 +80,21 @@ set(data, 'items[0].title', 'First')
 ```
 
 `set` mutates the object passed to it and returns the same object.
+
+## merge
+
+Deeply merge plain objects into a target object.
+
+```ts
+const target = { user: { name: 'Ada', flags: { admin: false } } }
+
+merge(target, { user: { email: 'ada@example.com', flags: { admin: true } } })
+// {
+//   user: { name: 'Ada', email: 'ada@example.com', flags: { admin: true } },
+// }
+```
+
+`merge` mutates and returns `target`. Sources are applied from left to right. Arrays and non-plain objects, such as `Date`, replace the existing value rather than being merged.
 
 ## extract
 
@@ -189,4 +204,5 @@ set(data, path, value)
 extract(data, mapping)
 each(data, callback)
 map(data, callback)
+merge(target, ...sources)
 ```

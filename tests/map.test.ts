@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { map } from '../map'
-import { set } from '../set'
+import { map } from '../src/map'
+import { set } from '../src/set'
 
 describe('map', () => {
   it('walks data and returns the store built by callback', () => {

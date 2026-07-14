@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { set } from '../set'
+import { set } from '../src/set'
 
 describe('set', () => {
   it('sets a nested object value and returns the same object', () => {
