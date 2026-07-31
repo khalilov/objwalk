@@ -1,4 +1,4 @@
-export { type WalkKey } from './types'
+export { type PickOptions, type WalkKey } from './types'
 export { each, type EachCallback } from './each'
 export { extract, type ExtractMapping } from './extract'
 export { map, type MapCallback } from './map'

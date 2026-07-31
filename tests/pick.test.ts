@@ -40,4 +40,43 @@ describe('pick', () => {
   it('keeps object key listing syntax working', () => {
     expect(pick(data, 'user.{*}')).toEqual(['name', 'role', 'email'])
   })
+
+  it('reads inherited properties by default', () => {
+    const inherited = Object.create({ role: 'admin' }) as Record<string, string>
+
+    expect(pick(inherited, 'role')).toBe('admin')
+  })
+
+  it('can restrict paths to own properties', () => {
+    const inherited = Object.create({ role: 'admin' }) as Record<string, string>
+    inherited.name = 'Ada'
+
+    expect(pick(inherited, 'name', { inherited: false })).toBe('Ada')
+    expect(pick(inherited, 'role', { inherited: false })).toBeUndefined()
+  })
+
+  it('ignores configured keys in every path segment', () => {
+    expect(pick(data, 'user.name', { ignore: ['user'] })).toBeUndefined()
+    expect(pick(data, 'user.name', { ignore: ['name'] })).toBeUndefined()
+  })
+
+  it('applies options to selected keys', () => {
+    const selected = Object.create({ role: 'admin' }) as Record<string, string>
+    selected.name = 'Ada'
+
+    expect(pick({ selected }, 'selected.{name,role}', { inherited: false })).toEqual({
+      name: 'Ada',
+      role: undefined,
+    })
+    expect(pick(data, 'user.{*}', { ignore: ['role'] })).toEqual(['name', 'email'])
+  })
+
+  it('keeps dots in selected keys literal', () => {
+    expect(pick({ selected: { 'user.name': 'Ada' } }, 'selected.{user.name}')).toBe('Ada')
+  })
+
+  it('applies options to array keys and indexes', () => {
+    expect(pick(data, 'items[0].id', { ignore: ['items'] })).toBeUndefined()
+    expect(pick(data, 'items[0].id', { ignore: ['0'] })).toBeUndefined()
+  })
 })

@@ -1,6 +1,13 @@
+import { type PickOptions } from '../types'
+import { getValueByKey } from './getValueByKey'
+
 const arraySegmentRegex = /^(\w+)\[(\d+)\]$/
 
-export const getValueByPath = (obj: any, path: string): any => {
+export const getValueByPath = (
+  obj: any,
+  path: string,
+  options: PickOptions = {}
+): any => {
   if (!path) return obj
 
   return path.split('.').reduce((result: any, current: string) => {
@@ -12,11 +19,11 @@ export const getValueByPath = (obj: any, path: string): any => {
 
     if (match) {
       const [, key, index] = match
-      const array = result[key]
+      const array = getValueByKey(result, key, options)
 
-      return Array.isArray(array) ? array[parseInt(index, 10)] : undefined
+      return Array.isArray(array) ? getValueByKey(array, index, options) : undefined
     }
 
-    return result[current]
+    return getValueByKey(result, current, options)
   }, obj)
 }

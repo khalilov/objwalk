@@ -59,6 +59,19 @@ pick(data, 'items[1].title')
 
 If the path cannot be resolved, `pick` returns `undefined`.
 
+By default, `pick` keeps its permissive property lookup behavior. Pass options to restrict
+lookups to own properties or ignore specific keys.
+
+```ts
+pick(data, path, {
+  inherited: false,
+  ignore: ['__proto__', 'prototype', 'constructor'],
+})
+```
+
+The options apply to every path segment, array index, and selected key. With `{*}`, ignored
+keys are omitted from the returned list.
+
 ## set
 
 Set a value inside an object by path.
