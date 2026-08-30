@@ -13,7 +13,7 @@ npm install objwalk
 ## Usage
 
 ```ts
-import { each, extract, map, merge, pick, set } from 'objwalk'
+import { each, equally, extract, map, merge, pick, set } from 'objwalk'
 ```
 
 ## pick
@@ -93,6 +93,21 @@ set(data, 'items[0].title', 'First')
 ```
 
 `set` mutates the object passed to it and returns the same object.
+
+## equally
+
+Deeply compare two values for structural equality.
+
+```ts
+equally({ a: { b: [1, 2] } }, { a: { b: [1, 2] } })
+// true
+
+equally({ a: 1 }, { a: 1, b: 2 })
+// false
+```
+
+`equally` treats `NaN` as equal to `NaN`, compares `Date` by timestamp and `RegExp` by
+source and flags, and follows circular references without looping.
 
 ## merge
 
@@ -218,4 +233,5 @@ extract(data, mapping)
 each(data, callback)
 map(data, callback)
 merge(target, ...sources)
+equally(a, b)
 ```
