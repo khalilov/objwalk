@@ -4,6 +4,8 @@ Small utilities for reading, writing, walking, and reshaping nested JavaScript o
 
 `objwalk` is built around a compact path syntax, so the same mental model works for picking values, setting values, extracting a new object shape, and walking through nested data.
 
+> Coding agent? Load the [objwalk skill](skills/objwalk/SKILL.md).
+
 ## Install
 
 ```bash
@@ -13,7 +15,7 @@ npm install objwalk
 ## Usage
 
 ```ts
-import { each, equally, extract, map, merge, pick, set } from 'objwalk'
+import { each, equally, extract, map, merge, parse, pick, set, stringify } from 'objwalk'
 ```
 
 ## pick
@@ -214,6 +216,90 @@ The callback receives:
 
 `map` returns `store`.
 
+## parse and stringify
+
+Parse JSON or accept a ready value, and serialize values with optional error handling.
+Exceptions return `undefined`, unless a fallback is provided or `onError` throws.
+
+```ts
+import { parse, stringify, type ParseOptions, type StringifyOptions } from 'objwalk'
+
+// Signatures:
+// parse(raw: unknown, options?: ParseOptions): unknown
+// stringify(value: unknown, options?: StringifyOptions): string | undefined
+
+const value = parse('{"a":1}') // { a: 1 }, typed as unknown
+const valueOrNull = parse('{', { fallback: null }) // null
+const text = stringify(value, { fallback: 'null', space: 2 })
+const object = { a: 1 }
+const array = [1, 2]
+
+parse(object) === object // true
+parse(array) === array // true
+
+parse('[]') // []
+stringify({}) // '{}'
+stringify([]) // '[]'
+stringify(null) // 'null'
+stringify('{}') // '"{}"'
+```
+
+Root values can be objects, arrays, strings, numbers, booleans, or `null`;
+neither function requires an expected shape or restricts values to objects.
+`parse` returns `unknown`; successful parsing does not validate the expected data structure.
+Validate the result before using it as a specific type. There is no `parse<T>()` overload.
+
+`parse` accepts `unknown`. Plain objects (with `Object.prototype` or a `null` prototype) and
+arrays are returned by reference, without cloning, serialization, mutation, or calling `reviver`.
+Other inputs use `JSON.parse(typeof raw === 'string' ? raw : String(raw), reviver)`.
+ArrayBuffer, DataView, and typed-array views use this text path; there is no binary decoder.
+For example, a Node.js Buffer containing JSON text can be parsed through its native string conversion.
+Errors during input recognition or string conversion follow the same `onError`/`fallback` contract.
+
+| Option | `ParseOptions` | `StringifyOptions` |
+| --- | --- | --- |
+| `fallback` | `unknown`, default `undefined` | `string`, default `undefined` |
+| `onError` | `(error: unknown) => void` | `(error: unknown) => void` |
+| `reviver` | Native `JSON.parse` callback, only for the text path | — |
+| `replacer` | — | Native callback or array of strings/numbers (also accepts `null`) |
+| `space` | — | `string` or `number` for native JSON formatting |
+
+Callbacks retain native `this` binding. For example, a reviver can transform or delete properties,
+and a replacer can select or transform values:
+
+```ts
+parse('{"count":2,"secret":true}', {
+  reviver: (key, value) => key === 'secret' ? undefined : value,
+}) // { count: 2 }
+
+stringify({ name: 'Ada', secret: true }, { replacer: ['name'], space: 2 })
+// '{\n  "name": "Ada"\n}'
+```
+
+On an exception, `onError` receives the original error once, then the function returns `fallback`.
+The callback's return value is ignored. Exceptions from `reviver`, `replacer`, `toJSON`, or getters
+follow the same rule. If `onError` throws, its exception propagates to the caller:
+
+```ts
+const requiredText = stringify(value, {
+  onError: (error) => {
+    throw error
+  },
+}) // still string | undefined
+
+stringify(1n, { fallback: 'null' }) // 'null' (BigInt throws natively)
+stringify(undefined, { fallback: 'null' }) // undefined (no exception)
+parse('false', { fallback: true }) // false
+parse('null', { fallback: {} }) // null
+```
+
+Fallbacks apply only to exceptions: valid `0`, `false`, `''`, and `null` are preserved.
+Likewise, a reviver returning `undefined` for the root does not trigger a fallback.
+Top-level `undefined`, functions, and symbols serialize to native `undefined` without calling
+`onError`. Native handling of these values inside objects/arrays, `NaN`, `Infinity`, and `toJSON`
+is preserved. Circular references throw natively and use the same error handling as BigInt.
+The wrappers do not mutate inputs, undo callback side effects, log errors, or repair invalid JSON.
+
 ## Path syntax
 
 | Syntax | Description |
@@ -223,6 +309,15 @@ The callback receives:
 | `user.{name,email}` | Pick several keys from one object. |
 | `user.{*}` | List keys from one object. |
 | `items[n].title` | Map every item in an array during `extract`. |
+
+## Agent skill
+
+The package includes an [objwalk skill](skills/objwalk/SKILL.md) in `skills/objwalk/`.
+After installation, point your agent at `node_modules/objwalk/skills/objwalk/SKILL.md`.
+If your agent uses a skill directory, link the entire `skills/objwalk` folder, not just `SKILL.md`.
+
+The skill explains the existing object utilities and JSON helpers, and directs agents to use
+them without redundant wrappers that only repeat object checks.
 
 ## API
 
@@ -234,4 +329,6 @@ each(data, callback)
 map(data, callback)
 merge(target, ...sources)
 equally(a, b)
+parse(raw, options?) // unknown
+stringify(value, options?) // string | undefined
 ```
