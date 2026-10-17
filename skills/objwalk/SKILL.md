@@ -1,6 +1,6 @@
 ---
 name: objwalk
-description: Use when writing or editing JavaScript or TypeScript that imports `objwalk`, reads or writes nested object paths, reshapes or walks objects, or uses objwalk JSON helpers.
+description: Use when writing or editing JavaScript or TypeScript that imports `objwalk`, reads, writes, or deletes nested object paths, reshapes or walks objects, or uses objwalk JSON helpers.
 ---
 
 # objwalk
@@ -19,7 +19,7 @@ them with type assertions or assume every method accepts arbitrary `unknown`.
 Named imports only:
 
 ```ts
-import { clone, each, equally, extract, map, merge, parse, pick, set, stringify } from 'objwalk'
+import { clone, each, equally, extract, flush, map, merge, parse, pick, set, stringify } from 'objwalk'
 ```
 
 ## Choose the existing operation
@@ -28,6 +28,7 @@ import { clone, each, equally, extract, map, merge, parse, pick, set, stringify 
 | --- | --- |
 | Read a nested value | `pick(data, path, options?)`; unresolved paths return `undefined`. |
 | Write a nested value | `set(data, path, value)`; creates intermediate containers, mutates and returns `data`. |
+| Delete a nested property | `flush(data, path)`; deletes an own property, mutates and returns `data`; missing paths are left unchanged. |
 | Reshape an object | `extract(source, mapping)`; mapping keys are destination paths, values are source paths. |
 | Visit nested values | `each(data, (key, value, path) => { ... })`; visits containers and leaves, excluding the root. |
 | Build a store while walking | `map(data, (key, value, store, path) => { ... }, store?)`; returns the store, ignores callback return values. |
@@ -35,7 +36,7 @@ import { clone, each, equally, extract, map, merge, parse, pick, set, stringify 
 | Deep copy | `clone(value)`; preserves `Date`, `RegExp`, symbol keys, and circular references. |
 | Deep comparison | `equally(a, b)`; supports `NaN`, `Date`, `RegExp`, and circular references. |
 
-`set` and `merge` mutate their targets. Use `clone` first only when the task
+`set`, `flush`, and `merge` mutate their targets. Use `clone` first only when the task
 requires an independent copy. `each` and `map` do not support circular traversal;
 do not infer that capability from `clone` or `equally`.
 
@@ -49,9 +50,17 @@ do not infer that capability from `clone` or `equally`.
 | `user.{*}` | List object keys with `pick`. |
 | `items[n].title` | Map array items in `extract`, with `[n]` in both source and destination paths. |
 
-`[n]` is an `extract` mapping feature, not a general wildcard for `pick` or `set`.
+`[n]` is an `extract` mapping feature, not a general wildcard for `pick`, `set`, or `flush`.
 An array of source paths in `extract` selects the first result that is not
 `undefined`, preserving `null`, `false`, `0`, and empty strings.
+
+Use `flush` to remove a property rather than `set(data, path, undefined)`, which
+leaves the property present. `flush` traverses and deletes only own properties.
+Missing, nullish, or primitive parents and empty paths are left unchanged; no
+containers are created and empty parents remain. Explicit array indexes work,
+but deleting an item leaves a hole without shifting indexes or changing length.
+Selection syntax (`{name,email}`, `{*}`) is not supported. Errors from getters,
+proxies, or deleting non-configurable properties propagate.
 
 `pick` reads inherited properties by default. Use its existing options when own
 properties or ignored keys are required:

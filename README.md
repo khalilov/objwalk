@@ -2,7 +2,7 @@
 
 Small utilities for reading, writing, walking, and reshaping nested JavaScript objects.
 
-`objwalk` is built around a compact path syntax, so the same mental model works for picking values, setting values, extracting a new object shape, and walking through nested data.
+`objwalk` is built around a compact path syntax, so the same mental model works for picking, setting, and deleting values, extracting a new object shape, and walking through nested data.
 
 > Coding agent? Load the [objwalk skill](skills/objwalk/SKILL.md).
 
@@ -15,7 +15,7 @@ npm install objwalk
 ## Usage
 
 ```ts
-import { each, equally, extract, map, merge, parse, pick, set, stringify } from 'objwalk'
+import { each, equally, extract, flush, map, merge, parse, pick, set, stringify } from 'objwalk'
 ```
 
 ## pick
@@ -95,6 +95,38 @@ set(data, 'items[0].title', 'First')
 ```
 
 `set` mutates the object passed to it and returns the same object.
+
+## flush
+
+Delete a property by path using native `delete` semantics.
+
+```ts
+const data = { user: { name: 'Ada', role: 'admin' } }
+
+flush(data, 'user.name')
+// { user: { role: 'admin' } }
+
+flush({}, 'path.to.key') // {}
+flush({ user: null }, 'user.name') // { user: null }
+```
+
+`flush(data, path)` mutates and returns the same object. Missing paths, `null`,
+`undefined`, and primitive parents are left unchanged. It does not create intermediate
+containers or remove empty parents. An empty path leaves the object unchanged.
+Only own properties are traversed and deleted; inherited properties are left unchanged.
+
+Array indexes use the same explicit syntax as `pick` and `set`:
+
+```ts
+const data = { items: [{ title: 'First' }, { title: 'Second' }] }
+
+flush(data, 'items[0].title') // { items: [{}, { title: 'Second' }] }
+flush(data, 'items[1]') // { items: [{}, <empty item>] }
+```
+
+Deleting an array item leaves a hole, preserves its length, and does not shift later items.
+Selection syntax (`{name,email}`, `{*}`) and `[n]` mappings are not supported by `flush`.
+Errors from getters, proxies, or deleting non-configurable properties propagate to the caller.
 
 ## equally
 
@@ -304,8 +336,8 @@ The wrappers do not mutate inputs, undo callback side effects, log errors, or re
 
 | Syntax | Description |
 | --- | --- |
-| `user.name` | Read or write a nested property. |
-| `items[0].title` | Read or write an array item by index. |
+| `user.name` | Read, write, or delete a nested property. |
+| `items[0].title` | Read, write, or delete an array item's property by index. |
 | `user.{name,email}` | Pick several keys from one object. |
 | `user.{*}` | List keys from one object. |
 | `items[n].title` | Map every item in an array during `extract`. |
@@ -324,6 +356,7 @@ them without redundant wrappers that only repeat object checks.
 ```ts
 pick(data, path)
 set(data, path, value)
+flush(data, path)
 extract(data, mapping)
 each(data, callback)
 map(data, callback)
