@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0]
+
+### Added
+
+- `diff(first, last)` and the public `DiffOperation` type — describe changes as
+  `set`/`delete` operations with literal path segments and `[]` for root replacement.
+  Recurses through plain objects' own enumerable string keys, compares arrays and
+  other values with `equally`, and distinguishes deletion from `null`/`undefined`.
+  Inputs are not mutated or cloned; cycles are outside the contract.
+- Documented `diff` in the README and the bundled agent skill.
+- `each` now supplies literal path segments as its fourth callback argument.
+- `each` options: `root` visits the root, and `descend` controls traversal into
+  container contents. Existing callbacks keep their key types and ignored return values.
+- Public `EachEntry` and `EachOptions` types, and root-aware `EachCallback` typing.
+
+### Changed
+
+- `diff` now traverses through `each`, preserving operation order and replacement semantics.
+
 ## [1.5.0] - 2026-10-17
 
 ### Added
@@ -55,7 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `map` — walk an object and build a new result.
 - `pick`, `set`, `extract` utilities with the path syntax.
 
-[1.5.0]: https://github.com/khalilov/objwalk/compare/v1.4.0...HEAD
+[1.6.0]: https://github.com/khalilov/objwalk/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/khalilov/objwalk/compare/v1.4.0...v1.5.0
 [1.3.9]: https://github.com/khalilov/objwalk/compare/v1.2.0...v1.3.9
 [1.2.0]: https://github.com/khalilov/objwalk/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/khalilov/objwalk/compare/v1.0.1...v1.1.0

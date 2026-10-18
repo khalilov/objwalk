@@ -1,5 +1,9 @@
 export type WalkKey = string | number
 
+export type DiffOperation =
+  | { type: 'set'; path: string[]; value: unknown }
+  | { type: 'delete'; path: string[] }
+
 export type PickOptions = {
   inherited?: boolean
   ignore?: readonly string[]

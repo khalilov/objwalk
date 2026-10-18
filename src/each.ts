@@ -1,42 +1,53 @@
-import { createPath, isWalkable } from './helpers'
+import { createPath } from './helpers/createPath'
+import { isWalkable } from './helpers/isWalkable'
 import { type WalkKey } from './types'
 
-export type EachCallback = (key: WalkKey, value: any, path: string) => void
+export type EachCallback<TKey extends WalkKey | undefined = WalkKey> = (
+  key: TKey,
+  value: any,
+  path: string,
+  segments: WalkKey[]
+) => void
 
-export const each = (data: any, callback: EachCallback): void => {
-  const walk = (value: any, path: string, key: WalkKey, parentIsArray: boolean) => {
-    const currentPath = path || createPath('', key, parentIsArray)
+export type EachEntry = {
+  key: WalkKey | undefined
+  value: any
+  path: string
+  segments: WalkKey[]
+}
 
-    callback(key, value, currentPath)
+export type EachOptions = {
+  root?: boolean
+  descend?: (entry: EachEntry) => boolean
+}
 
-    if (!isWalkable(value)) {
-      return
+type Each = {
+  (data: any, callback: EachCallback, options?: EachOptions & { root?: false }): void
+  (data: any, callback: EachCallback<WalkKey | undefined>, options: EachOptions): void
+}
+
+export const each: Each = (
+  data: any,
+  callback: EachCallback<any>,
+  { root = false, descend }: EachOptions = {}
+): void => {
+  const walk = (value: any, path: string, segments: WalkKey[], key: WalkKey | undefined): void => {
+    if (segments.length > 0 || root) {
+      callback(key, value, path, [...segments])
     }
 
-    if (Array.isArray(value)) {
-      value.forEach((item, index) => {
-        walk(item, createPath(currentPath, index, true), index, true)
-      })
-      return
+    if (isWalkable(value) && (descend === undefined || descend({ key, value, path, segments: [...segments] }))) {
+      if (Array.isArray(value)) {
+        value.forEach((item, index) => {
+          walk(item, createPath(path, index, true), [...segments, index], index)
+        })
+      } else {
+        Object.entries(value).forEach(([childKey, item]) => {
+          walk(item, createPath(path, childKey, false), [...segments, childKey], childKey)
+        })
+      }
     }
-
-    Object.entries(value).forEach(([childKey, item]) => {
-      walk(item, createPath(currentPath, childKey, false), childKey, false)
-    })
   }
 
-  if (!isWalkable(data)) {
-    return
-  }
-
-  if (Array.isArray(data)) {
-    data.forEach((item, index) => {
-      walk(item, createPath('', index, true), index, true)
-    })
-    return
-  }
-
-  Object.entries(data).forEach(([key, value]) => {
-    walk(value, createPath('', key, false), key, false)
-  })
+  walk(data, '', [], undefined)
 }

@@ -15,7 +15,7 @@ npm install objwalk
 ## Usage
 
 ```ts
-import { each, equally, extract, flush, map, merge, parse, pick, set, stringify } from 'objwalk'
+import { diff, each, equally, extract, flush, map, merge, parse, pick, set, stringify } from 'objwalk'
 ```
 
 ## pick
@@ -143,6 +143,55 @@ equally({ a: 1 }, { a: 1, b: 2 })
 `equally` treats `NaN` as equal to `NaN`, compares `Date` by timestamp and `RegExp` by
 source and flags, and follows circular references without looping.
 
+## diff
+
+Describe changes from `first` to `last` as a list of `set` and `delete` operations.
+
+```ts
+import { diff, type DiffOperation } from 'objwalk'
+
+const operations: DiffOperation[] = diff(
+  { hp: 10, target: 'enemy', position: { x: 1, y: 2 } },
+  { hp: null, position: { x: 3, y: 2 } }
+)
+// [
+//   { type: 'set', path: ['hp'], value: null },
+//   { type: 'set', path: ['position', 'x'], value: 3 },
+//   { type: 'delete', path: ['target'] },
+// ]
+
+diff({}, { a: undefined })
+// [{ type: 'set', path: ['a'], value: undefined }]
+
+diff({ a: 1 }, {})
+// [{ type: 'delete', path: ['a'] }]
+
+diff(1, null)
+// [{ type: 'set', path: [], value: null }]
+
+diff({ a: 1 }, { a: 1 }) // []
+```
+
+- When both values are plain objects (with `Object.prototype` or a null prototype),
+  `diff` recursively compares own enumerable string keys. Symbol and non-enumerable
+  keys are ignored during that traversal, and prototype or descriptor changes are not reported.
+- Arrays and other values use `equally`; changed values are replaced as a whole.
+  Newly added properties also use a single `set`, including when their value is an empty object.
+- A `set` carries the new value, including `null` or `undefined`; a `delete` means
+  the key is absent from the final object's enumerable keys. Empty parents remain.
+- Paths are arrays of literal string keys, so dots, brackets, and empty keys are unambiguous.
+  An empty path `[]` means replacement of the root. These are not the string paths
+  accepted by `pick`, `set`, or `flush`; joining segments with `.` can lose information.
+- Operations follow the final object's key order, recursively, then report removed
+  keys in the first object's key order at each level. No changes return `[]`.
+
+`diff(first, last): DiffOperation[]` does not mutate or clone either input. Values in `set`
+operations retain references from `last`; this is not an independent snapshot.
+Getter and proxy errors propagate. Inputs must be acyclic; cycle detection is not performed.
+Shared references without cycles are supported. There is no options argument or patch applier.
+Native JSON serialization drops an `undefined` operation value, so these operations are not
+a lossless JSON transport format for arbitrary JavaScript values.
+
 ## merge
 
 Deeply merge plain objects into a target object.
@@ -216,16 +265,52 @@ extract(source, {
 Walk through an object and call a function for each value.
 
 ```ts
-each(data, (key, value, path) => {
-  console.log(key, value, path)
+each(data, (key, value, path, segments) => {
+  console.log(key, value, path, segments)
 })
 ```
 
 The callback receives:
 
-- `key`: the current object key or array index
+- `key`: the current object key or numeric array index; `undefined` for the root when enabled
 - `value`: the current value
-- `path`: the full path to the current value
+- `path`: the full string path to the current value
+- `segments`: literal path segments (`WalkKey[]`), with string object keys and numeric array indexes
+
+For example, a literal key `'user.name'` has segments `['user.name']`, while a nested
+`user.name` has `['user', 'name']`. `items[0].id` has `['items', 0, 'id']`.
+The first three callback arguments keep their existing meaning; old callbacks still work.
+Callback return values are ignored, including `false`.
+
+Pass options as the third argument:
+
+```ts
+each(data, (key, value, path, segments) => {
+  // The root is visited first with key undefined, path '', and segments [].
+}, {
+  root: true,
+  // Visit arrays themselves, but skip their contents.
+  descend: ({ value }) => Array.isArray(value) === false,
+})
+```
+
+| Option | Behavior | Default |
+| --- | --- | --- |
+| `root` | Visit the root, including primitive, nullish, or empty root values | `false` |
+| `descend` | Receive `{ key, value, path, segments }` and decide whether to visit a container's children | Visit all children |
+
+`descend` runs only for objects and arrays, after their callback. It also runs for the
+root container when `root` is false, allowing the entire traversal to be skipped.
+Returning `false` skips children, without evaluating their getters; the container itself
+is still visited when applicable. Errors from callbacks, getters, and `descend` propagate.
+Mutating the received `segments` arrays does not change traversal paths.
+
+`EachCallback`, `EachEntry`, and `EachOptions` are public named type exports.
+Without `root`, or with `root: false`, callback keys remain `WalkKey`. With `root: true`
+or a dynamic `root` option, keys are `WalkKey | undefined`. An explicitly typed callback
+can use `EachCallback<WalkKey | undefined>` when root visits are possible.
+Traversal does not detect cycles. `diff` uses `each` with `root: true` and a `descend`
+predicate that stops at arrays, non-plain objects, and branches replaced as a whole.
 
 ## map
 
@@ -358,10 +443,11 @@ pick(data, path)
 set(data, path, value)
 flush(data, path)
 extract(data, mapping)
-each(data, callback)
+each(data, callback, options?)
 map(data, callback)
 merge(target, ...sources)
 equally(a, b)
+diff(first, last) // DiffOperation[]
 parse(raw, options?) // unknown
 stringify(value, options?) // string | undefined
 ```

@@ -1,15 +1,7 @@
 import { type ObjwalkObject } from './pick'
+import { isPlainObject } from './helpers/isPlainObject'
 
 const unsafeKeys = new Set(['__proto__', 'constructor', 'prototype'])
-
-const isPlainObject = (value: unknown): value is ObjwalkObject => {
-  if (value === null || typeof value !== 'object') {
-    return false
-  }
-
-  const prototype = Object.getPrototypeOf(value)
-  return prototype === Object.prototype || prototype === null
-}
 
 export const merge = <T extends ObjwalkObject>(target: T, ...sources: unknown[]): T => {
   const targetRecord: ObjwalkObject = target

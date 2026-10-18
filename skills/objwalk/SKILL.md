@@ -1,6 +1,6 @@
 ---
 name: objwalk
-description: Use when writing or editing JavaScript or TypeScript that imports `objwalk`, reads, writes, or deletes nested object paths, reshapes or walks objects, or uses objwalk JSON helpers.
+description: Use when writing or editing JavaScript or TypeScript that imports `objwalk`, reads, writes, or deletes nested object paths, computes differences, reshapes or walks objects, or uses objwalk JSON helpers.
 ---
 
 # objwalk
@@ -19,7 +19,7 @@ them with type assertions or assume every method accepts arbitrary `unknown`.
 Named imports only:
 
 ```ts
-import { clone, each, equally, extract, flush, map, merge, parse, pick, set, stringify } from 'objwalk'
+import { clone, diff, each, equally, extract, flush, map, merge, parse, pick, set, stringify } from 'objwalk'
 ```
 
 ## Choose the existing operation
@@ -30,14 +30,15 @@ import { clone, each, equally, extract, flush, map, merge, parse, pick, set, str
 | Write a nested value | `set(data, path, value)`; creates intermediate containers, mutates and returns `data`. |
 | Delete a nested property | `flush(data, path)`; deletes an own property, mutates and returns `data`; missing paths are left unchanged. |
 | Reshape an object | `extract(source, mapping)`; mapping keys are destination paths, values are source paths. |
-| Visit nested values | `each(data, (key, value, path) => { ... })`; visits containers and leaves, excluding the root. |
+| Visit nested values | `each(data, (key, value, path, segments) => { ... }, options?)`; root is excluded by default. |
 | Build a store while walking | `map(data, (key, value, store, path) => { ... }, store?)`; returns the store, ignores callback return values. |
 | Deep merge | `merge(target, ...sources)`; mutates and returns the target, merges plain objects, replaces arrays and non-plain values. |
 | Deep copy | `clone(value)`; preserves `Date`, `RegExp`, symbol keys, and circular references. |
 | Deep comparison | `equally(a, b)`; supports `NaN`, `Date`, `RegExp`, and circular references. |
+| Describe changes | `diff(first, last): DiffOperation[]`; returns `set`/`delete` operations, or `[]` when unchanged. |
 
 `set`, `flush`, and `merge` mutate their targets. Use `clone` first only when the task
-requires an independent copy. `each` and `map` do not support circular traversal;
+requires an independent copy. `each`, `map`, and `diff` do not support circular traversal;
 do not infer that capability from `clone` or `equally`.
 
 ## Paths and reshaping
@@ -71,6 +72,51 @@ pick(data, 'user.name', {
   ignore: ['__proto__', 'prototype', 'constructor'],
 })
 ```
+
+## Walking
+
+`each` passes literal `segments: WalkKey[]` as its fourth callback argument.
+Object keys are strings; array indexes are numbers. Prefer segments when keys may
+contain dots, brackets, or empty strings; the string `path` can be ambiguous.
+
+`EachOptions` accepts `root` (default `false`) and
+`descend: ({ key, value, path, segments }) => boolean`.
+With `root: true`, the root is visited first, including primitive/nullish values,
+with key `undefined`, path `''`, and segments `[]`. Callback keys are then typed
+`WalkKey | undefined`; legacy calls keep `WalkKey`. Use the public
+`EachCallback<WalkKey | undefined>` for an explicitly typed root-aware callback.
+`EachEntry` and `EachOptions` are also public named exports.
+
+`descend` is called only for containers, after their callback, and returning false
+skips their children. It also runs for a root container excluded from callbacks.
+For example, `descend: ({ value }) => Array.isArray(value) === false` visits arrays
+without traversing their elements. Callback return values remain ignored, including
+false. Mutating received segments does not affect traversal. Callback/getter/descend
+errors propagate. Cycles are not detected.
+
+## Differences
+
+`diff` recursively compares two plain objects by their own enumerable string keys;
+symbol/non-enumerable keys, prototypes, and descriptors are not reported during that traversal.
+Arrays and other values use `equally` and are replaced as a whole when changed.
+New properties are also set as whole values. The public `DiffOperation` type is:
+
+```ts
+type DiffOperation =
+  | { type: 'set'; path: string[]; value: unknown }
+  | { type: 'delete'; path: string[] }
+```
+
+Paths contain literal keys; `[]` replaces the root. Do not join them with `.` to
+call `set` or `flush`: keys may contain dots or brackets. `merge` does not apply
+these operations. There is no patch applier or options argument.
+
+Deletion is distinct from assigning `null` or `undefined`, including adding an own
+`undefined` property. Empty parent objects remain. Inputs are not mutated or cloned;
+`set.value` retains references from `last`. Native JSON serialization loses an
+`undefined` value, so do not assume lossless transport for arbitrary JS values.
+Getter/proxy errors propagate. Cycles are outside the contract, without detection;
+shared references without cycles work.
 
 ## JSON and ready values
 
