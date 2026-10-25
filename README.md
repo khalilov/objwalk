@@ -125,21 +125,37 @@ Return `false` to stop the entire walk. For more control, `each` also accepts
 `root` and `descend` options and provides literal path segments as a fourth
 callback argument. [Traversal details](SPEC.md#each).
 
-Use `map` when the walk should build a result:
+Use `map` to transform values while keeping the object and array structure:
 
 ```ts
-import { map, set } from 'objwalk'
+import { map } from 'objwalk'
 
-const cleaned = map({ name: ' Natalia ', tags: [' ts '] }, (_key, value, store, path) => {
-  if (typeof value === 'string') {
-    set(store, path, value.trim())
-  }
-})
+const cleaned = map({ name: ' Natalia ', tags: [' ts '] }, (_key, value) =>
+  typeof value === 'string' ? value.trim() : value
+)
 // { name: 'Natalia', tags: ['ts'] }
 ```
 
-`map` returns its store and ignores callback return values. Both walkers expect
-acyclic data.
+Each callback return becomes the value at that key or index in the new result.
+The input is not modified by `map`. Both walkers expect acyclic data unless
+traversal options prune the cycles.
+
+When your callback handles each entry as a whole, use a shallow walk:
+
+```ts
+import { map } from 'objwalk'
+
+const counts = map(
+  { editors: ['Natalia'], readers: ['Ada', 'Grace'] },
+  (_key, value) => value.length,
+  { shallow: true }
+)
+// { editors: 1, readers: 2 }
+```
+
+Shallow dictionary keys are typed as `string`; shallow array indexes are `number`.
+For selective traversal, pass `descend` in the third argument.
+[Mapping options](SPEC.md#map).
 
 ## Merge defaults or make a copy
 
@@ -188,7 +204,7 @@ formatting, and an `onError` callback are available through options.
 | Delete one or several paths | [`flush(data, path)`](SPEC.md#flush) |
 | Reshape data with a mapping | [`extract(source, mapping)`](SPEC.md#extract) |
 | Visit nested values | [`each(data, callback, options?)`](SPEC.md#each) |
-| Build a result while walking | [`map(data, callback, store?)`](SPEC.md#map) |
+| Transform values while keeping keys | [`map(data, callback, options?)`](SPEC.md#map) |
 | Merge plain objects | [`merge(target, ...sources)`](SPEC.md#merge) |
 | Copy supported values | [`clone(value)`](SPEC.md#clone) |
 | Compare values or selected paths | [`equally(a, b, paths?)`](SPEC.md#equally) |

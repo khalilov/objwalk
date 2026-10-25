@@ -1,7 +1,7 @@
 export { type DiffOperation, type ParseOptions, type PickOptions, type StringifyOptions, type WalkKey } from './types'
 export { each, type EachCallback, type EachEntry, type EachOptions } from './each'
 export { extract, type ExtractMapping } from './extract'
-export { map, type MapCallback } from './map'
+export { map, type MapCallback, type MapOptions } from './map'
 export { merge } from './merge'
 export { pick, type ObjwalkObject } from './pick'
 export { set } from './set'

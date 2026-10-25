@@ -30,7 +30,7 @@ type DiffOperation =
 | `flush(data, path)` | Input object | Mutates the input |
 | `extract(source, mapping)` | New result object | Selected values are not cloned |
 | `each(data, callback, options?)` | `undefined` | Passes original values to callbacks |
-| `map(data, callback, store?)` | Supplied store or a new object | Callback builds or mutates the store |
+| `map(data, callback, options?)` | New array or dictionary | Callback returns each replacement value; pruned and returned values can retain references |
 | `merge(target, ...sources)` | Target object | Mutates the target; replacement values are not cloned |
 | `clone(value)` | Value of the same declared generic type | Recursively copies supported objects and arrays |
 | `equally(a, b, paths?)` | `boolean` | Does not assign to the inputs |
@@ -41,8 +41,8 @@ type DiffOperation =
 `pick`, `set`, and `flush` use `{}` when their `data` argument is `undefined`.
 `set` and `flush` still require the path argument. `pick` defaults its path to `''`.
 Their declared data contract is `ObjwalkObject`; this is not a guarantee that all
-functions accept every possible JavaScript value. `each` and `map` accept `any`;
-`clone` is generic; `equally`, `diff`, `parse`, and `stringify` accept `unknown` inputs.
+functions accept every possible JavaScript value. `each` accepts `any`; `map`
+accepts dictionaries and readonly arrays; `clone` is generic; `equally`, `diff`, `parse`, and `stringify` accept `unknown` inputs.
 `extract` requires an object and a mapping; `merge` requires an object target.
 
 Except for the documented JSON error handling, exceptions from callbacks, getters,
@@ -217,22 +217,81 @@ not share stop state.
 ## map
 
 ```ts
-type MapCallback<TStore extends Record<string, any> = Record<string, any>> = (
-  key: WalkKey,
+type MapCallback<TResult = unknown, TKey extends WalkKey = WalkKey> = (
+  key: TKey,
   value: any,
-  store: TStore,
   path: string
-) => void
+) => TResult
+
+type MapOptions = {
+  descend?: EachOptions['descend']
+  shallow?: boolean
+}
 ```
 
-`map(data, callback, store?)` uses the default `each` traversal for objects and arrays,
-excluding the root. The callback receives the original value and the same store
-on every visit. A supplied store is returned by identity; otherwise the store is
-a new `{}`. The generic store type is preserved in the return type.
+`map(data, callback, options?)` transforms a dictionary or array without assigning
+into the input. An array root produces a new array; a dictionary root produces a
+new ordinary object. The root is excluded from callback visits. Every visited
+property or array index retains its literal key; its value becomes the callback's
+return value. `false`, `null`, and `undefined` are stored as ordinary results;
+there is no callback return value for stopping, filtering, or deleting entries.
+Callback replacements are not traversed again, including returned objects and arrays.
 
-All callback return values, including `false`, are ignored. `map` exposes neither
-root/descend options nor literal segments. Errors propagate and completed store
-mutations remain applied. Cycles are not detected.
+The callback receives `(key, value, path)`. Object keys are strings, array indexes
+are numbers, and paths follow `each`'s descriptive string format. No accumulator or
+store argument exists. `MapCallback`'s first generic argument is the return value
+rather than the former store type; the optional second argument is the key type.
+Array results are typed as `TResult[]`; dictionary results as
+`Record<string, TResult>`. A dictionary-or-array union input produces the matching
+union result type. Readonly input arrays are accepted and produce mutable new arrays.
+Deep callback values are typed as `any`, since earlier child transformations can
+change their contents.
+
+Deep traversal is the default. Plain objects and arrays are recursively mapped
+before their containing value is passed to the callback. Thus callbacks run in
+postorder: children first, then their parent, with the root still excluded.
+A container callback receives a newly built container containing its already
+mapped children. A pruned container callback instead receives the original value
+by reference. `Date`, `RegExp`, other non-plain objects, and functions are leaves:
+they are passed directly to the callback without rebuilding their internal state.
+The root dictionary's own entries are enumerated regardless of its prototype;
+the plain-object restriction applies to nested traversal.
+
+Objects enumerate own enumerable string keys; inherited, symbol, and non-enumerable
+properties are excluded. Literal dots, brackets, empty keys, and `__proto__` are
+preserved as own data properties rather than parsed as paths. Result objects use
+`Object.prototype`; source prototypes and descriptors are not copied. Array indexes
+follow `each` iteration, preserving length and absent slots. An explicitly returned
+`undefined` is an own slot, whereas an unvisited hole remains absent. Inherited
+indexed values can be visited; extra array properties are excluded.
+
+`descend` runs on each original traversable container before visiting children,
+including the excluded root. It receives `EachEntry` with literal `segments`;
+modifying these segments does not alter traversal paths. Returning `false` prunes
+children, then the container's callback processes the original value as a whole.
+Pruning the root produces an empty container of the same kind, with no callback
+visits. This timing differs from `each`, which calls its callback before `descend`.
+
+`shallow` defaults to `false`. With literal `shallow: true`, only immediate root
+children are mapped: dictionary callback keys are typed as `string`, and statically
+known array keys as `number`. Deep calls, dynamic shallow flags, and union inputs
+keep `WalkKey`. An arbitrary `descend` predicate does not narrow keys. When both
+options are present, `descend` is evaluated only for the root, because child
+containers are already at the shallow limit.
+
+Traversed containers are new. Pruned containers, special objects, and values
+returned by the callback may share references with the input. Each occurrence of
+a shared traversable container is mapped separately. Cycles are not detected;
+pruning can prevent descent into a cyclic branch. Exceptions from callbacks,
+getters, and `descend` propagate. The function does not roll back callback side
+effects or await promises returned by callbacks.
+
+This replaces the published accumulator-based contract. Migrate
+`map(data, (key, value, store, path) => { store[key] = transform(value) }, store)`
+to `map(data, (key, value, path) => transform(value), options)` when the result
+retains input keys. Callers that build a different structure should use `each`
+and manage their accumulator explicitly. Old stores are not accepted as options,
+and there is no compatibility overload or `undefined` placeholder.
 
 ## merge
 

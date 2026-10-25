@@ -31,7 +31,7 @@ import { clone, diff, each, equally, extract, flush, map, merge, parse, pick, se
 | Delete nested properties | `flush(data, path)`; accepts one path or `string[]`, deletes own properties, mutates and returns `data`; missing paths are left unchanged. |
 | Reshape an object | `extract(source, mapping)`; mapping keys are destination paths, values are source paths. |
 | Visit nested values | `each(data, (key, value, path, segments) => { ... }, options?)`; supports objects and arrays, root is excluded by default; returning `false` stops the entire traversal. |
-| Build a store while walking | `map(data, (key, value, store, path) => { ... }, store?)`; returns the store, ignores callback return values. |
+| Transform nested values | `map(data, (key, value, path) => replacement, options?)`; returns a new array or dictionary with the same keys. |
 | Deep merge | `merge(target, ...sources)`; mutates and returns the target, merges plain objects, replaces arrays and non-plain values. |
 | Deep copy | `clone(value)`; preserves `Date`, `RegExp`, symbol keys, and circular references. |
 | Deep comparison | `equally(a, b, paths?)`; supports `NaN`, `Date`, `RegExp`, and circular references; optional `string[]` compares only selected paths. |
@@ -108,10 +108,31 @@ the entire traversal, including siblings and ancestor branches; other return val
 are ignored. The stopped container's `descend` is not called, and its children and
 subsequent values are not read. Object keys are collected on entering a container;
 values are read as visited. `each` still returns `undefined`. Existing callbacks
-that returned `false` must omit that return to keep walking. `map` continues to
-ignore callback return values for both objects and arrays.
-Mutating received segments does not affect traversal. Callback/getter/descend errors
+that returned `false` must omit that return to keep walking. Mutating received
+segments does not affect traversal. Callback/getter/descend errors
 propagate. Cycles are not detected.
+
+`map(data, callback, options?)` returns a new array for an array root and a new
+ordinary dictionary for a dictionary root. Its callback is `(key, value, path)`;
+return the replacement value. There is no store argument. `false`, `null`, and
+`undefined` are ordinary output values, not traversal control. To accumulate a
+different structure, use `each` with an explicit accumulator.
+
+Deep map callbacks run children first, then their containing value; the root is
+excluded. Plain objects and arrays are rebuilt, while non-plain objects such as
+Date and RegExp are passed to the callback as leaves. Callback results are not
+traversed again. Source data is not assigned to, but returned or pruned values
+can retain references. Array holes and literal object keys are preserved.
+
+`MapOptions` is the third argument. `descend` receives original containers before
+children are mapped; false prunes their children and passes the original value to
+the callback. It also runs for the excluded root, where false produces an empty
+result of the same kind. Literal `shallow: true` visits only immediate children,
+typing dictionary keys as `string` and array keys as `number`. When both options
+are present, `descend` is evaluated only for the root. Deep/dynamic calls keep
+`WalkKey`; a custom descend predicate alone cannot narrow keys.
+`MapCallback<TResult, TKey>` describes the callback's returned value and key type.
+This is a breaking replacement of the old store-based map, not an overload.
 
 ## Differences
 

@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0]
+
+### Changed
+
+- **Breaking:** `map(data, callback, options?)` now returns a transformed array or
+  dictionary. Its callback is `(key, value, path)` and returns the replacement value.
+  Removed the store argument and accumulator behavior; use `each` for accumulation.
+- Deep map callbacks run children first; callback replacements are not traversed
+  again. `false`, `null`, and `undefined` are ordinary mapped values.
+- `MapCallback<TResult, TKey>` describes the returned value and key type instead
+  of the former store type. Results retain the input container kind and keys.
+
+### Added
+
+- `MapOptions` as the third argument, with `descend` to prune original containers
+  before mapping their children, and `shallow: true` for one-level mapping.
+- Shallow dictionary callbacks infer string keys; shallow array callbacks infer
+  numeric indexes. Dynamic or deep calls keep `WalkKey`.
+
 ## [1.7.0]
 
 ### Added
