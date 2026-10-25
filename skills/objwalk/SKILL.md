@@ -28,13 +28,13 @@ import { clone, diff, each, equally, extract, flush, map, merge, parse, pick, se
 | --- | --- |
 | Read a nested value | `pick(data, path, options?)`; unresolved paths return `undefined`. |
 | Write a nested value | `set(data, path, value)`; creates intermediate containers, mutates and returns `data`. |
-| Delete a nested property | `flush(data, path)`; deletes an own property, mutates and returns `data`; missing paths are left unchanged. |
+| Delete nested properties | `flush(data, path)`; accepts one path or `string[]`, deletes own properties, mutates and returns `data`; missing paths are left unchanged. |
 | Reshape an object | `extract(source, mapping)`; mapping keys are destination paths, values are source paths. |
-| Visit nested values | `each(data, (key, value, path, segments) => { ... }, options?)`; root is excluded by default. |
+| Visit nested values | `each(data, (key, value, path, segments) => { ... }, options?)`; supports objects and arrays, root is excluded by default; returning `false` stops the entire traversal. |
 | Build a store while walking | `map(data, (key, value, store, path) => { ... }, store?)`; returns the store, ignores callback return values. |
 | Deep merge | `merge(target, ...sources)`; mutates and returns the target, merges plain objects, replaces arrays and non-plain values. |
 | Deep copy | `clone(value)`; preserves `Date`, `RegExp`, symbol keys, and circular references. |
-| Deep comparison | `equally(a, b)`; supports `NaN`, `Date`, `RegExp`, and circular references. |
+| Deep comparison | `equally(a, b, paths?)`; supports `NaN`, `Date`, `RegExp`, and circular references; optional `string[]` compares only selected paths. |
 | Describe changes | `diff(first, last): DiffOperation[]`; returns `set`/`delete` operations, or `[]` when unchanged. |
 
 `set`, `flush`, and `merge` mutate their targets. Use `clone` first only when the task
@@ -53,7 +53,8 @@ do not infer that capability from `clone` or `equally`.
 
 `[n]` is an `extract` mapping feature, not a general wildcard for `pick`, `set`, or `flush`.
 An array of source paths in `extract` selects the first result that is not
-`undefined`, preserving `null`, `false`, `0`, and empty strings.
+`undefined`, preserving `null`, `false`, `0`, and empty strings; later paths are
+not read. Sparse path arrays in `flush` and fallback arrays in `extract` skip holes.
 
 Use `flush` to remove a property rather than `set(data, path, undefined)`, which
 leaves the property present. `flush` traverses and deletes only own properties.
@@ -62,6 +63,18 @@ containers are created and empty parents remain. Explicit array indexes work,
 but deleting an item leaves a hole without shifting indexes or changing length.
 Selection syntax (`{name,email}`, `{*}`) is not supported. Errors from getters,
 proxies, or deleting non-configurable properties propagate.
+
+`flush` processes a path array in order; `[]` leaves the target unchanged.
+`equally` without `paths` (or with `undefined`) compares whole values. With `paths`,
+every selected value must match; `[]` returns true and `''` selects the whole input.
+It uses dot notation and explicit array indexes, reading inherited properties like
+`pick`; unresolved paths compare as `undefined`, including against an explicit
+`undefined` value. Selection syntax and `[n]` mappings are not supported.
+Getter/proxy errors propagate.
+
+`equally` compares `Date` and `RegExp` only with their respective types. Arrays
+compare every index, including holes, which read as `undefined`; holes match
+explicit `undefined` slots but not other values.
 
 `pick` reads inherited properties by default. Use its existing options when own
 properties or ignored keys are required:
@@ -90,9 +103,15 @@ with key `undefined`, path `''`, and segments `[]`. Callback keys are then typed
 `descend` is called only for containers, after their callback, and returning false
 skips their children. It also runs for a root container excluded from callbacks.
 For example, `descend: ({ value }) => Array.isArray(value) === false` visits arrays
-without traversing their elements. Callback return values remain ignored, including
-false. Mutating received segments does not affect traversal. Callback/getter/descend
-errors propagate. Cycles are not detected.
+without traversing their elements. Returning exactly `false` from the callback stops
+the entire traversal, including siblings and ancestor branches; other return values
+are ignored. The stopped container's `descend` is not called, and its children and
+subsequent values are not read. Object keys are collected on entering a container;
+values are read as visited. `each` still returns `undefined`. Existing callbacks
+that returned `false` must omit that return to keep walking. `map` continues to
+ignore callback return values for both objects and arrays.
+Mutating received segments does not affect traversal. Callback/getter/descend errors
+propagate. Cycles are not detected.
 
 ## Differences
 
@@ -147,5 +166,6 @@ Fallback applies only to exceptions. Preserve valid falsy results and native
 `undefined`. Neither fallback nor a throwing `onError` changes stringify's
 return type of `string | undefined`.
 
-Full usage: [README](../../README.md). In a consumer project, read the installed
+Full usage: [README](../../README.md). Edge cases: [specification](../../SPEC.md).
+In a consumer project, read the installed
 package's README and declarations when checking the available version's API.

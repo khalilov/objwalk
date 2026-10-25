@@ -128,6 +128,18 @@ describe('diff', () => {
     ])
   })
 
+  it.each([
+    { first: new Date(0), last: {} },
+    { first: {}, last: new Date(0) },
+    { first: Array<unknown>(1), last: [1] },
+    { first: [1], last: Array<unknown>(1) },
+  ])('reports replacements for special types and differing sparse arrays: %j', ({ first, last }) => {
+    expect(diff(first, last)).toEqual([{ type: 'set', path: [], value: last }])
+    expect(diff({ value: first }, { value: last })).toEqual([
+      { type: 'set', path: ['value'], value: last },
+    ])
+  })
+
   it('keeps dots, brackets, and empty keys as literal path segments', () => {
     expect(diff({ 'a.b': { '[0]': 1 }, '': 1 }, { 'a.b': { '[0]': 2 }, '': 2 })).toEqual([
       { type: 'set', path: ['a.b', '[0]'], value: 2 },

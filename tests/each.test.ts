@@ -196,15 +196,141 @@ describe('each', () => {
     expect(visited).toEqual(['branch'])
   })
 
-  it('ignores callback return values', () => {
+  it('stops the entire traversal when a nested object callback returns false', () => {
     const visited: string[] = []
 
-    each({ a: { b: 1 } }, (_key, _value, path) => {
+    each({ a: { b: 1, c: 2 }, d: 3 }, (_key, _value, path) => {
       visited.push(path)
-      return false
+
+      return path === 'a.b' ? false : undefined
     })
 
     expect(visited).toEqual(['a', 'a.b'])
+  })
+
+  it('stops the entire traversal from inside nested arrays', () => {
+    const visited: string[] = []
+
+    each([{ items: [1, 2] }, { items: [3] }], (_key, _value, path) => {
+      visited.push(path)
+
+      return path === '[0].items[0]' ? false : undefined
+    })
+
+    expect(visited).toEqual(['[0]', '[0].items', '[0].items[0]'])
+  })
+
+  it.each([{ a: 1 }, [1], 1, null])('stops at an included root: %s', (data) => {
+    const visited: string[] = []
+    const descended: string[] = []
+
+    each(data, (_key, _value, path) => {
+      visited.push(path)
+
+      return false
+    }, {
+      root: true,
+      descend: ({ path }) => {
+        descended.push(path)
+
+        return true
+      },
+    })
+
+    expect(visited).toEqual([''])
+    expect(descended).toEqual([])
+  })
+
+  it('does not descend into a stopped container or visit its siblings', () => {
+    const visited: string[] = []
+    const descended: string[] = []
+
+    each({ a: { b: 1 }, c: 2 }, (_key, _value, path) => {
+      visited.push(path)
+
+      return false
+    }, {
+      descend: ({ path }) => {
+        descended.push(path)
+
+        return true
+      },
+    })
+
+    expect(visited).toEqual(['a'])
+    expect(descended).toEqual([''])
+  })
+
+  it.each([true, undefined, null, 0, '', 1])('continues for callback results other than false: %s', (result) => {
+    const visited: string[] = []
+    const callback: EachCallback = (_key, _value, path) => {
+      visited.push(path)
+
+      return result
+    }
+
+    each({ a: { b: 1 } }, callback)
+
+    expect(visited).toEqual(['a', 'a.b'])
+  })
+
+  it.each([{ first: 1 }, [1]])('does not read subsequent getters after stopping: %s', (data) => {
+    const visited: string[] = []
+
+    Object.defineProperty(data, Array.isArray(data) ? '1' : 'later', {
+      enumerable: true,
+      get: () => {
+        throw new Error('Must not read after stopping')
+      },
+    })
+    each(data, (_key, _value, path) => {
+      visited.push(path)
+
+      return false
+    })
+
+    expect(visited).toHaveLength(1)
+  })
+
+  it('propagates callback errors', () => {
+    const error = new Error('Cannot visit')
+
+    expect(() => each({ a: 1 }, () => {
+      throw error
+    })).toThrow(error)
+  })
+
+  it('keeps nested and subsequent traversals independent after stopping', () => {
+    const visited: string[] = []
+
+    each({ a: 1, b: 2 }, (_key, _value, path) => {
+      each([1, 2], () => false)
+      visited.push(path)
+    })
+    each({ c: 3 }, (_key, _value, path) => {
+      visited.push(path)
+    })
+
+    expect(visited).toEqual(['a', 'b', 'c'])
+  })
+
+  it.each([{}, []])('propagates errors when reading a visited value: %s', (data) => {
+    const error = new Error('Cannot read value')
+
+    Object.defineProperty(data, Array.isArray(data) ? '0' : 'value', {
+      enumerable: true,
+      get: () => {
+        throw error
+      },
+    })
+
+    expect(() => each(data, () => {})).toThrow(error)
+  })
+
+  it('returns undefined after completion or early stopping', () => {
+    expectTypeOf(each).returns.toEqualTypeOf<void>()
+    expect(each({ a: 1 }, () => {})).toBeUndefined()
+    expect(each([1, 2], () => false)).toBeUndefined()
   })
 
   it('keeps traversal paths intact when consumers mutate received segments', () => {

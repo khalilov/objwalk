@@ -1,3 +1,5 @@
+import { each } from './each'
+
 export const clone = <T>(value: T): T => {
   const store = new WeakMap<object, object>()
 
@@ -34,9 +36,9 @@ export const clone = <T>(value: T): T => {
     const result: Record<PropertyKey, unknown> = {}
     store.set(obj, result)
 
-    for (const key of Reflect.ownKeys(obj)) {
+    each(Reflect.ownKeys(obj), (_index, key: PropertyKey) => {
       result[key] = cloneValue((obj as Record<PropertyKey, unknown>)[key])
-    }
+    })
 
     return result as U
   }

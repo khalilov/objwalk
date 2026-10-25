@@ -7,7 +7,7 @@ export type EachCallback<TKey extends WalkKey | undefined = WalkKey> = (
   value: any,
   path: string,
   segments: WalkKey[]
-) => void
+) => unknown
 
 export type EachEntry = {
   key: WalkKey | undefined
@@ -31,22 +31,24 @@ export const each: Each = (
   callback: EachCallback<any>,
   { root = false, descend }: EachOptions = {}
 ): void => {
-  const walk = (value: any, path: string, segments: WalkKey[], key: WalkKey | undefined): void => {
-    if (segments.length > 0 || root) {
-      callback(key, value, path, [...segments])
+  const walk = (value: any, path: string, segments: WalkKey[], key: WalkKey | undefined): boolean => {
+    const proceed = segments.length > 0 || root
+      ? callback(key, value, path, [...segments]) !== false
+      : true
+
+    if (proceed && isWalkable(value) && (descend === undefined || descend({ key, value, path, segments: [...segments] }))) {
+      if (Array.isArray(value)) {
+        return value.every((item, index) =>
+          walk(item, createPath(path, index, true), [...segments, index], index)
+        )
+      }
+
+      return Object.keys(value).every((childKey) =>
+        walk(value[childKey], createPath(path, childKey, false), [...segments, childKey], childKey)
+      )
     }
 
-    if (isWalkable(value) && (descend === undefined || descend({ key, value, path, segments: [...segments] }))) {
-      if (Array.isArray(value)) {
-        value.forEach((item, index) => {
-          walk(item, createPath(path, index, true), [...segments, index], index)
-        })
-      } else {
-        Object.entries(value).forEach(([childKey, item]) => {
-          walk(item, createPath(path, childKey, false), [...segments, childKey], childKey)
-        })
-      }
-    }
+    return proceed
   }
 
   walk(data, '', [], undefined)

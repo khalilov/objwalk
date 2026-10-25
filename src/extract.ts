@@ -1,3 +1,4 @@
+import { each } from './each'
 import { pick, type ObjwalkObject } from './pick'
 import { set } from './set'
 
@@ -31,14 +32,14 @@ export const extract = (source: ObjwalkObject, mapping: ExtractMapping): Objwalk
     }
 
     if (Array.isArray(sourcePath)) {
-      for (const item of sourcePath) {
+      each(sourcePath, (_key, item: string) => {
         const value = pick(source, item)
 
         if (value !== undefined) {
           set(result, destinationPath, value)
-          break
+          return false
         }
-      }
+      })
 
       return
     }

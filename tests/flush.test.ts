@@ -1,8 +1,59 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 
-import { flush } from '../src/index'
+import { flush, type ObjwalkObject } from '../src/index'
 
 describe('flush', () => {
+  it('exports the single-path and path-list signature', () => {
+    expectTypeOf(flush).parameters.toEqualTypeOf<[data: ObjwalkObject | undefined, path: string | string[]]>()
+    expectTypeOf(flush).returns.toEqualTypeOf<ObjwalkObject>()
+  })
+
+  it('keeps completed deletions and stops at the first error in a path list', () => {
+    const data = Object.defineProperty({ first: 1, last: 3 }, 'locked', { value: 2 })
+
+    expect(() => flush(data, ['first', 'locked', 'last'])).toThrow(TypeError)
+    expect(Object.hasOwn(data, 'first')).toBe(false)
+    expect(data).toHaveProperty('locked', 2)
+    expect(data.last).toBe(3)
+  })
+
+  it('deletes multiple paths, ignoring missing, empty, and duplicate paths', () => {
+    const data = { user: { name: 'Ada', role: 'admin' }, items: [{ id: 'a', title: 'First' }] }
+    const paths = ['user.missing', '', 'user.name', 'items[0].title', 'user.name']
+    const result = flush(data, paths)
+
+    expect(result).toBe(data)
+    expect(data).toEqual({ user: { role: 'admin' }, items: [{ id: 'a' }] })
+    expect(paths).toEqual(['user.missing', '', 'user.name', 'items[0].title', 'user.name'])
+  })
+
+  it('leaves the object unchanged for an empty path list', () => {
+    const data = { user: { name: 'Ada' } }
+
+    expect(flush(data, [])).toBe(data)
+    expect(data).toEqual({ user: { name: 'Ada' } })
+  })
+
+  it('skips holes in a path list like each', () => {
+    const data = { user: { name: 'Ada', role: 'admin' } }
+    const paths = ['user.name', 'user.role']
+
+    delete paths[0]
+    flush(data, paths)
+
+    expect(data).toEqual({ user: { name: 'Ada' } })
+  })
+
+  it('handles overlapping paths and array indexes without shifting items', () => {
+    const data = { user: { name: 'Ada' }, items: ['a', 'b', 'c'] }
+
+    flush(data, ['user', 'user.name', 'items[0]', 'items[1]'])
+
+    expect(Object.hasOwn(data, 'user')).toBe(false)
+    expect(data.items).toEqual([, , 'c'])
+    expect(data.items).toHaveLength(3)
+  })
+
   it('deletes a nested property and returns the same object', () => {
     const data = { user: { name: 'Ada', role: 'admin' } }
     const result = flush(data, 'user.name')

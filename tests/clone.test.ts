@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import { clone } from '../src/clone'
-import { equally } from '../src/equally'
 
 describe('clone', () => {
   it('returns primitives as is', () => {
@@ -18,7 +17,7 @@ describe('clone', () => {
     expect(result).not.toBe(source)
     expect(result.a).not.toBe(source.a)
     expect(result.a.b).not.toBe(source.a.b)
-    expect(equally(result, source)).toBe(true)
+    expect(result).toStrictEqual(source)
   })
 
   it('clones Date and RegExp', () => {
@@ -43,7 +42,7 @@ describe('clone', () => {
 
     expect(result).not.toBe(source)
     expect(result.self).toBe(result)
-    expect(equally(result, source)).toBe(true)
+    expect(result).toStrictEqual(source)
   })
 
   it('clones symbol keys', () => {

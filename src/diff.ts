@@ -15,13 +15,13 @@ export const diff = (first: unknown, last: unknown): DiffOperation[] => {
   const frames: DiffFrame[] = []
   // each visits parents first; defer removals until leaving their branch.
   const finish = (depth: number): DiffFrame | undefined => {
-    for (const { first, last, path } of frames.splice(depth).reverse()) {
-      for (const key of Object.keys(first)) {
+    each(frames.splice(depth).reverse(), (_index, { first, last, path }: DiffFrame) => {
+      each(Object.keys(first), (_index, key: string) => {
         if (Object.prototype.propertyIsEnumerable.call(last, key) === false) {
           operations.push({ type: 'delete', path: [...path, key] })
         }
-      }
-    }
+      })
+    }, { descend: ({ segments }) => segments.length === 0 })
 
     return frames.at(-1)
   }

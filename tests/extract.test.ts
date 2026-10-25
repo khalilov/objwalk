@@ -37,6 +37,29 @@ describe('extract', () => {
     expect(result).toEqual({})
   })
 
+  it('skips holes in fallback path lists', () => {
+    const paths = ['missing', 'value']
+
+    delete paths[0]
+
+    expect(extract({ value: 1 }, { selected: paths })).toEqual({ selected: 1 })
+  })
+
+  it.each([null, false, 0, ''])('stops fallback lookup at a resolved value and continues mapping: %s', (value) => {
+    const source = Object.defineProperty({ value, name: 'Ada' }, 'later', {
+      enumerable: true,
+      get: () => {
+        throw new Error('Must not read after a resolved fallback')
+      },
+    })
+    const result = extract(source, {
+      selected: ['missing', 'value', 'later'],
+      name: 'name',
+    })
+
+    expect(result).toEqual({ selected: value, name: 'Ada' })
+  })
+
   it('maps array items with [n]', () => {
     const result = extract(
       { products: [{ name: 'Keyboard' }, { name: 'Mouse' }] },

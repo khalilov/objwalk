@@ -40,11 +40,12 @@
   "files": [
     "dist",
     "README.md",
+    "SPEC.md",
     "skills"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean",
-    "test": "vitest run",
+    "test": "tsc --project tsconfig.test.json && vitest run",
     "pack:check": "npm pack --dry-run"
   },
   "prepublishOnly": "npm run build",

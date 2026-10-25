@@ -3,6 +3,29 @@ import { describe, expect, it } from 'vitest'
 import { merge } from '../src/merge'
 
 describe('merge', () => {
+  it('ignores non-plain sources without traversing their contents', () => {
+    const source = Object.defineProperty([], '0', {
+      enumerable: true,
+      get: () => {
+        throw new Error('Must not traverse an ignored source')
+      },
+    })
+
+    expect(merge({}, null, undefined, false, 0, 'text', source, { value: 1 })).toEqual({ value: 1 })
+  })
+
+  it('assigns replacement objects by reference without traversing them', () => {
+    const value = Object.defineProperty({}, 'nested', {
+      enumerable: true,
+      get: () => {
+        throw new Error('Must not traverse a replacement')
+      },
+    })
+    const result = merge({ value: null }, { value })
+
+    expect(result.value).toBe(value)
+  })
+
   it('deeply merges plain objects and returns the same target', () => {
     const target = { user: { name: 'Ada', flags: { admin: false } } }
 

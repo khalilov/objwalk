@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0]
+
+### Added
+
+- `flush(data, path)` now accepts `string | string[]` to delete multiple paths in order.
+- `equally(a, b, paths?)` accepts an optional `string[]` to compare only selected paths.
+  Omitting it preserves full comparison; an empty list returns `true`.
+
+### Changed
+
+- Returning exactly `false` from an `each` callback now stops the entire traversal
+  for objects and arrays. Other return values remain ignored, and `descend: false`
+  still skips only children. Callbacks that previously returned `false` must omit
+  that return to keep walking. `map` still ignores callback results.
+- `each` reads object property values as they are visited rather than reading all
+  sibling values up front, so stopping prevents subsequent getter calls.
+- Replaced internal `for...of` loops with `each`, restricting descent for shallow
+  object lists. Sparse path lists in `flush` and fallback lists in `extract` now
+  skip holes consistently with `each`.
+
+### Fixed
+
+- `equally` no longer treats a `Date` or `RegExp` as equal to an ordinary object
+  with matching own properties.
+- Sparse-array equality now checks every index, removing argument-order-dependent
+  results while retaining equality between holes and explicit `undefined` slots.
+  Both fixes also apply to selected paths and `diff` comparisons.
+
 ## [1.6.0]
 
 ### Added
