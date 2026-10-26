@@ -53,9 +53,10 @@ describe('map', () => {
   it('types shallow dictionary keys as strings without an accumulator', () => {
     const result = map({ editors: ['Ada'], readers: ['Grace', 'Lin'] }, (key, value, path) => {
       expectTypeOf(key).toEqualTypeOf<string>()
+      expectTypeOf(value).toEqualTypeOf<string[]>()
       expect(path).toBe(key)
 
-      return Number(value.length)
+      return value.length
     }, { shallow: true })
 
     expectTypeOf(result).toEqualTypeOf<Record<string, number>>()
@@ -63,12 +64,13 @@ describe('map', () => {
   })
 
   it('types shallow readonly array keys as numbers', () => {
-    const data: readonly unknown[] = [{ name: 'Ada' }, { name: 'Grace' }]
+    const data: readonly { name: string }[] = [{ name: 'Ada' }, { name: 'Grace' }]
     const result = map(data, (key, value, path) => {
       expectTypeOf(key).toEqualTypeOf<number>()
+      expectTypeOf(value).toEqualTypeOf<{ name: string }>()
       expect(path).toBe(`[${key}]`)
 
-      return String(value.name)
+      return value.name
     }, { shallow: true })
 
     expectTypeOf(result).toEqualTypeOf<string[]>()
@@ -86,15 +88,58 @@ describe('map', () => {
     expectTypeOf<MapCallback<string>>().returns.toEqualTypeOf<string>()
     map({ items: [1] }, (key, value) => {
       expectTypeOf(key).toEqualTypeOf<WalkKey>()
+      expectTypeOf(value).toBeAny()
 
       return value
     })
     map({ items: [1] }, (key, value) => {
       expectTypeOf(key).toEqualTypeOf<WalkKey>()
+      expectTypeOf(value).toBeAny()
 
       return value
     }, options)
     map({ items: [1] }, callback, { descend: ({ segments }) => segments.length === 0 })
+  })
+
+  it('infers shallow dictionary functions without caller annotations', () => {
+    const data: Record<string, (value: number) => number> = { double: (value) => value * 2 }
+    const result = map(data, (_key, value) => {
+      expectTypeOf(value).toEqualTypeOf<(value: number) => number>()
+
+      return value(3)
+    }, { shallow: true })
+
+    expectTypeOf(result).toEqualTypeOf<Record<string, number>>()
+    expect(result).toEqual({ double: 6 })
+  })
+
+  it('infers heterogeneous shallow values and supports explicitly typed callbacks', () => {
+    const callback: MapCallback<number, string, { count: number }> = (_key, value) => value.count
+    const mixed = map({ count: 1, name: 'Ada' }, (_key, value) => {
+      expectTypeOf(value).toEqualTypeOf<string | number>()
+
+      return String(value)
+    }, { shallow: true })
+
+    expect(mixed).toEqual({ count: '1', name: 'Ada' })
+    expect(map({ item: { count: 2 } }, callback, { shallow: true })).toEqual({ item: 2 })
+    expect(map<string>([1], (_key, value) => String(value), { shallow: true })).toEqual(['1'])
+  })
+
+  it('preserves unknown shallow values instead of exposing any', () => {
+    const dictionary: Record<string, unknown> = { first: 1 }
+    const array: readonly unknown[] = [1]
+
+    map(dictionary, (_key, value) => {
+      expectTypeOf(value).toBeUnknown()
+
+      return value
+    }, { shallow: true })
+    map(array, (_key, value) => {
+      expectTypeOf(value).toBeUnknown()
+
+      return value
+    }, { shallow: true })
   })
 
   it('prunes a container before mapping its original value as a whole', () => {

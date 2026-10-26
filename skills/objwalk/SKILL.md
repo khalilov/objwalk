@@ -92,13 +92,23 @@ pick(data, 'user.name', {
 Object keys are strings; array indexes are numbers. Prefer segments when keys may
 contain dots, brackets, or empty strings; the string `path` can be ambiguous.
 
-`EachOptions` accepts `root` (default `false`) and
+`EachOptions` accepts `root` and `shallow` (both default `false`), and
 `descend: ({ key, value, path, segments }) => boolean`.
 With `root: true`, the root is visited first, including primitive/nullish values,
 with key `undefined`, path `''`, and segments `[]`. Callback keys are then typed
 `WalkKey | undefined`; legacy calls keep `WalkKey`. Use the public
 `EachCallback<WalkKey | undefined>` for an explicitly typed root-aware callback.
 `EachEntry` and `EachOptions` are also public named exports.
+
+Use `each(data, callback, { shallow: true })` to visit only immediate entries.
+Literal shallow mode infers string dictionary keys, numeric array indexes, and
+the input value type. With root visits enabled or a dynamic root flag, key types
+also include `undefined` and value types include the root container. Narrow the
+value union explicitly; key/value parameters are not correlated. `descend` runs
+only at the shallow root. Callback `false` still stops the entire traversal.
+`EachCallback<TKey, TValue>` adds an optional value type parameter, defaulting
+to `any` for existing explicit callback declarations. Dynamic shallow flags and
+unknown inputs retain general callback types.
 
 `descend` is called only for containers, after their callback, and returning false
 skips their children. It also runs for a root container excluded from callbacks.
@@ -131,7 +141,11 @@ result of the same kind. Literal `shallow: true` visits only immediate children,
 typing dictionary keys as `string` and array keys as `number`. When both options
 are present, `descend` is evaluated only for the root. Deep/dynamic calls keep
 `WalkKey`; a custom descend predicate alone cannot narrow keys.
-`MapCallback<TResult, TKey>` describes the callback's returned value and key type.
+Shallow map also infers the input value type; deep/dynamic callback values stay
+general. `MapCallback<TResult, TKey, TValue>` describes the callback's result,
+key, and input value types. Calls that specify only `map<TResult>` retain the
+default `any` input value type; omit explicit generics for full inference or
+provide both result and value types.
 This is a breaking replacement of the old store-based map, not an overload.
 
 ## Differences

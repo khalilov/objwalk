@@ -3,9 +3,9 @@ import { createPath } from './helpers/createPath'
 import { isPlainObject } from './helpers/isPlainObject'
 import { type WalkKey } from './types'
 
-export type MapCallback<TResult = unknown, TKey extends WalkKey = WalkKey> = (
+export type MapCallback<TResult = unknown, TKey extends WalkKey = WalkKey, TValue = any> = (
   key: TKey,
-  value: any,
+  value: TValue,
   path: string
 ) => TResult
 
@@ -15,14 +15,14 @@ export type MapOptions = {
 }
 
 type Map = {
-  <TResult>(
-    data: readonly unknown[],
-    callback: MapCallback<TResult, number>,
+  <TResult, TValue = any>(
+    data: readonly TValue[],
+    callback: MapCallback<TResult, number, TValue>,
     options: MapOptions & { shallow: true }
   ): TResult[]
-  <TResult>(
-    data: Record<string, unknown>,
-    callback: MapCallback<TResult, string>,
+  <TResult, TValue = any>(
+    data: Record<string, TValue>,
+    callback: MapCallback<TResult, string, TValue>,
     options: MapOptions & { shallow: true }
   ): Record<string, TResult>
   <TResult>(data: readonly unknown[], callback: MapCallback<TResult>, options?: MapOptions): TResult[]
@@ -60,7 +60,7 @@ export const map: Map = (
           enumerable: true,
           configurable: true,
         })
-      }, { descend: ({ segments }) => segments.length === 0 })
+      }, { shallow: true })
     }
 
     return key !== undefined ? callback(key, mapped, path) : mapped

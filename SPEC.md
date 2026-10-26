@@ -163,9 +163,9 @@ does not provide an independent deep snapshot.
 ## each
 
 ```ts
-type EachCallback<TKey extends WalkKey | undefined = WalkKey> = (
+type EachCallback<TKey extends WalkKey | undefined = WalkKey, TValue = any> = (
   key: TKey,
-  value: any,
+  value: TValue,
   path: string,
   segments: WalkKey[]
 ) => unknown
@@ -180,6 +180,7 @@ type EachEntry = {
 type EachOptions = {
   root?: boolean
   descend?: (entry: EachEntry) => boolean
+  shallow?: boolean
 }
 ```
 
@@ -194,8 +195,9 @@ are leaves, and built-in collection internals are not traversed.
 `root` defaults to `false`. When enabled, the root is visited first with key
 `undefined`, path `''`, and segments `[]`, even for primitive, nullish, or empty
 inputs. Otherwise a primitive or nullish root has no visits. Object keys are
-strings and array indexes are numbers. Without root visits, callback keys are
-typed as `WalkKey`; enabled or dynamic root options use `WalkKey | undefined`.
+strings and array indexes are numbers. In the default deep mode, callback keys
+are typed as `WalkKey` without root visits; enabled or dynamic root options use
+`WalkKey | undefined`. Shallow key and value types are described below.
 
 Returning exactly `false` from the callback stops the entire traversal, including
 siblings and remaining ancestor branches. Other return values, including other
@@ -207,6 +209,28 @@ both completion and early stopping.
 an excluded root container. Returning `false` skips that container's children and
 continues with siblings. It does not stop the entire traversal.
 
+`shallow` defaults to `false`. With `shallow: true`, only immediate root children
+are visited, plus the root when requested. Child values are passed by reference;
+their contents are not read. `descend` is evaluated only for the root because
+child containers are already at the shallow limit. Root pruning and stopping via
+callback `false` keep their existing meanings. Cyclic child values are safe when
+the shallow limit prevents following them.
+
+With literal `shallow: true` and root visits disabled, dictionary keys are typed
+as `string` and values as the dictionary's value type; readonly array keys are
+`number` and values are the element type. Heterogeneous inputs produce the union
+of their immediate value types. With root visits enabled or a dynamic root flag,
+the key type additionally includes `undefined`, and the value type additionally
+includes the root container's type. These key/value unions are not correlated
+for control-flow narrowing; narrow a union value before accessing its fields.
+
+Deep traversal, dynamic shallow flags, and unknown or mixed array/dictionary inputs retain the
+general key and value types. An arbitrary `descend` predicate does not narrow
+them. `EachCallback<TKey, TValue>` supports explicitly typed callbacks; `TValue`
+defaults to `any` to preserve existing callback type declarations.
+`EachEntry.value` in `descend` remains general because the predicate can see
+different container levels, including the root.
+
 Object keys are collected when entering a container; values are read as visited.
 For arrays, native iteration captures the starting length: appended slots beyond
 that length are not visited. Callback and `descend` receive separate copies of
@@ -217,9 +241,9 @@ not share stop state.
 ## map
 
 ```ts
-type MapCallback<TResult = unknown, TKey extends WalkKey = WalkKey> = (
+type MapCallback<TResult = unknown, TKey extends WalkKey = WalkKey, TValue = any> = (
   key: TKey,
-  value: any,
+  value: TValue,
   path: string
 ) => TResult
 
@@ -240,7 +264,8 @@ Callback replacements are not traversed again, including returned objects and ar
 The callback receives `(key, value, path)`. Object keys are strings, array indexes
 are numbers, and paths follow `each`'s descriptive string format. No accumulator or
 store argument exists. `MapCallback`'s first generic argument is the return value
-rather than the former store type; the optional second argument is the key type.
+rather than the former store type; the optional second argument is the key type,
+and the optional third argument is the input value type (default `any`).
 Array results are typed as `TResult[]`; dictionary results as
 `Record<string, TResult>`. A dictionary-or-array union input produces the matching
 union result type. Readonly input arrays are accepted and produce mutable new arrays.
@@ -274,8 +299,14 @@ visits. This timing differs from `each`, which calls its callback before `descen
 
 `shallow` defaults to `false`. With literal `shallow: true`, only immediate root
 children are mapped: dictionary callback keys are typed as `string`, and statically
-known array keys as `number`. Deep calls, dynamic shallow flags, and union inputs
-keep `WalkKey`. An arbitrary `descend` predicate does not narrow keys. When both
+known array keys as `number`. The input value type is inferred from the dictionary
+values or array elements, including readonly and heterogeneous inputs. A shallow
+`Record<string, T>` or readonly `T[]` passes `T` to its callback. Deep calls, dynamic
+shallow flags, and union inputs keep `WalkKey` and general callback values. An
+arbitrary `descend` predicate does not narrow these types. The shallow overloads
+use `<TResult, TValue = any>`: calls that explicitly provide only `TResult` retain
+the default `any` value type for compatibility. Omit explicit type arguments for
+full inference, or provide both result and value types. When both
 options are present, `descend` is evaluated only for the root, because child
 containers are already at the shallow limit.
 

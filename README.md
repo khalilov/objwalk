@@ -125,6 +125,21 @@ Return `false` to stop the entire walk. For more control, `each` also accepts
 `root` and `descend` options and provides literal path segments as a fourth
 callback argument. [Traversal details](SPEC.md#each).
 
+Use `{ shallow: true }` to visit dictionary entries as whole values:
+
+```ts
+import { each } from 'objwalk'
+
+each({ first: { count: 1 }, second: { count: 2 } }, (key, value) => {
+  console.log(key, value.count)
+}, { shallow: true })
+// first 1
+// second 2
+```
+
+Here, `key` is inferred as `string` and `value` as `{ count: number }`.
+Shallow array visits infer a numeric index and the array's element type.
+
 Use `map` to transform values while keeping the object and array structure:
 
 ```ts
@@ -154,6 +169,7 @@ const counts = map(
 ```
 
 Shallow dictionary keys are typed as `string`; shallow array indexes are `number`.
+Both `each` and `map` also infer the original value type in shallow mode.
 For selective traversal, pass `descend` in the third argument.
 [Mapping options](SPEC.md#map).
 

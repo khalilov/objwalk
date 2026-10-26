@@ -3,6 +3,187 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 import { each, type EachCallback, type EachEntry, type EachOptions, type WalkKey } from '../src/index'
 
 describe('each', () => {
+  it('types shallow dictionary entries and does not read their nested values', () => {
+    const branch = Object.defineProperty({ count: 1 }, 'nested', {
+      enumerable: true,
+      get: () => { throw new Error('Must not descend into a shallow entry') },
+    })
+    const data: Record<string, { count: number }> = { first: branch, second: { count: 2 } }
+    const visits: Array<[string, number]> = []
+
+    each(data, (key, value, path, segments) => {
+      expectTypeOf(key).toEqualTypeOf<string>()
+      expectTypeOf(value).toEqualTypeOf<{ count: number }>()
+      expect(path).toBe(key)
+      expect(segments).toEqual([key])
+      visits.push([key, value.count])
+    }, { shallow: true })
+
+    expect(visits).toEqual([['first', 1], ['second', 2]])
+  })
+
+  it('types shallow readonly array entries without visiting their children', () => {
+    const data: readonly { count: number }[] = [{ count: 1 }, { count: 2 }]
+    const visits: number[] = []
+
+    each(data, (key, value, path, segments) => {
+      expectTypeOf(key).toEqualTypeOf<number>()
+      expectTypeOf(value).toEqualTypeOf<{ count: number }>()
+      expect(path).toBe(`[${key}]`)
+      expect(segments).toEqual([key])
+      visits.push(value.count)
+    }, { shallow: true })
+
+    expect(visits).toEqual([1, 2])
+  })
+
+  it('includes the dictionary root in shallow key and value types', () => {
+    const data: Record<string, { count: number }> = { first: { count: 1 } }
+    const paths: string[] = []
+
+    each(data, (key, value, path) => {
+      expectTypeOf(key).toEqualTypeOf<string | undefined>()
+      expectTypeOf(value).toEqualTypeOf<typeof data | { count: number }>()
+      paths.push(path)
+    }, { shallow: true, root: true })
+
+    expect(paths).toEqual(['', 'first'])
+  })
+
+  it('includes a readonly array root in shallow key and value types', () => {
+    const data: readonly number[] = [1, 2]
+    const paths: string[] = []
+
+    each(data, (key, value, path) => {
+      expectTypeOf(key).toEqualTypeOf<number | undefined>()
+      expectTypeOf(value).toEqualTypeOf<number | typeof data>()
+      paths.push(path)
+    }, { shallow: true, root: true })
+
+    expect(paths).toEqual(['', '[0]', '[1]'])
+  })
+
+  it('keeps root unions for a dynamic root flag with literal shallow mode', () => {
+    const data = { count: 1 }
+    const options: EachOptions & { shallow: true } = { shallow: true, root: true }
+
+    each(data, (key, value) => {
+      expectTypeOf(key).toEqualTypeOf<string | undefined>()
+      expectTypeOf(value).toEqualTypeOf<number | typeof data>()
+    }, options)
+  })
+
+  it('keeps dynamic-depth and unknown-input callbacks general', () => {
+    const options: EachOptions & { root: false } = { root: false, shallow: true }
+    const data: unknown = { count: 1 }
+
+    each({ items: [1] }, (key, value) => {
+      expectTypeOf(key).toEqualTypeOf<WalkKey>()
+      expectTypeOf(value).toBeAny()
+    }, options)
+    each(data, (key, value) => {
+      expectTypeOf(key).toEqualTypeOf<WalkKey>()
+      expectTypeOf(value).toBeAny()
+    }, { shallow: true })
+  })
+
+  it('supports explicitly typed shallow callbacks and heterogeneous tuples', () => {
+    const callback: EachCallback<string, { count: number }> = (_key, value) => {
+      expect(value.count).toBe(1)
+    }
+    const data: readonly [number, string] = [1, 'Ada']
+
+    each({ first: { count: 1 } }, callback, { shallow: true })
+    each(data, (_key, value) => {
+      expectTypeOf(value).toEqualTypeOf<number | string>()
+    }, { shallow: true })
+  })
+
+  it('preserves unknown value types for shallow typed containers', () => {
+    const dictionary: Record<string, unknown> = { first: 1 }
+    const array: readonly unknown[] = [1]
+
+    each(dictionary, (_key, value) => {
+      expectTypeOf(value).toBeUnknown()
+    }, { shallow: true })
+    each(array, (_key, value) => {
+      expectTypeOf(value).toBeUnknown()
+    }, { shallow: true })
+  })
+
+  it('infers the value union for dictionaries with different key sets', () => {
+    const records: Array<{ count: number } | { name: string }> = [{ count: 1 }, { name: 'Ada' }]
+
+    records.forEach((data) => {
+      each(data, (key, value) => {
+        expectTypeOf(key).toEqualTypeOf<string>()
+        expectTypeOf(value).toEqualTypeOf<number | string>()
+      }, { shallow: true })
+    })
+  })
+
+  it('evaluates descend only at the shallow root after its callback', () => {
+    const events: string[] = []
+
+    each({ child: { nested: 1 } }, (_key, _value, path) => {
+      events.push(`visit:${path}`)
+    }, {
+      shallow: true,
+      root: true,
+      descend: ({ path }) => {
+        events.push(`descend:${path}`)
+
+        return true
+      },
+    })
+
+    expect(events).toEqual(['visit:', 'descend:', 'visit:child'])
+  })
+
+  it.each([{ first: 1 }, [1]])('stops a shallow traversal before subsequent getters: %j', (data) => {
+    const visits: WalkKey[] = []
+
+    Object.defineProperty(data, Array.isArray(data) ? '1' : 'later', {
+      enumerable: true,
+      get: () => { throw new Error('Must stop before reading the next entry') },
+    })
+    each(data, (key) => {
+      visits.push(key)
+
+      return false
+    }, { shallow: true })
+
+    expect(visits).toEqual([Array.isArray(data) ? 0 : 'first'])
+  })
+
+  it('prunes the shallow root and preserves stopping at an included root', () => {
+    const visits: string[] = []
+
+    each({ first: 1 }, (_key, _value, path) => {
+      visits.push(path)
+    }, { shallow: true, root: true, descend: () => false })
+    each({ first: 1 }, () => false, {
+      shallow: true,
+      root: true,
+      descend: () => { throw new Error('Must stop before descend') },
+    })
+
+    expect(visits).toEqual([''])
+  })
+
+  it('allows cyclic values in shallow dictionaries and skips array holes', () => {
+    const dictionary: Record<string, unknown> = {}
+    const array = Array<number>(3)
+    const keys: WalkKey[] = []
+
+    dictionary.self = dictionary
+    array[1] = 2
+    each(dictionary, (key) => { keys.push(key) }, { shallow: true })
+    each(array, (key) => { keys.push(key) }, { shallow: true })
+
+    expect(keys).toEqual(['self', 1])
+  })
+
   it('walks nested objects and arrays with path information', () => {
     const data = {
       user: { name: 'Ada' },

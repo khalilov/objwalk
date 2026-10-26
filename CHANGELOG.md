@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0]
+
+### Added
+
+- `each` supports `shallow: true`, visiting immediate entries with inferred
+  string dictionary keys or numeric array indexes. Root visits and early stopping
+  retain their existing semantics.
+- Shallow `each` and `map` infer callback value types from dictionaries and readonly
+  arrays. Shallow `each` with root visits also includes the root type in callback
+  values. Deep and dynamic-depth calls keep their general types.
+- Optional value type parameters in `EachCallback<TKey, TValue>` and
+  `MapCallback<TResult, TKey, TValue>`, preserving existing generic arguments.
+
 ## [1.8.0]
 
 ### Changed
